@@ -460,6 +460,9 @@
             </div>
 
             <form id="longevityForm" action="https://formspree.io/f/mvzzgzeo" method="POST">
+                <!-- Hidden fields for better email formatting -->
+                <input type="hidden" name="_subject" value="New Baseline Metrics Submission">
+                <input type="hidden" name="_template" value="table">
                 <!-- Section 1: Basic Information -->
                 <div class="section-card">
                     <div class="section-header">
@@ -1504,12 +1507,159 @@
 
         // Form submission
         document.getElementById('longevityForm').addEventListener('submit', function(e) {
-            // Let form submit naturally to Formspree
+            e.preventDefault();
+            
+            // Create formatted summary
+            const formData = new FormData(this);
+            const data = {};
+            
+            // Collect all data
+            for (let [key, value] of formData.entries()) {
+                if (value) data[key] = value;
+            }
+            
+            // Create a formatted summary field
+            let summary = '=== BASELINE METRICS ASSESSMENT ===\n\n';
+            
+            // Basic Info
+            if (data.fullName || data.dob || data.sex) {
+                summary += '--- BASIC INFORMATION ---\n';
+                if (data.fullName) summary += `Name: ${data.fullName}\n`;
+                if (data.dob) summary += `Date of Birth: ${data.dob}\n`;
+                if (data.sex) summary += `Sex: ${data.sex}\n`;
+                summary += '\n';
+            }
+            
+            // VO2 Max
+            if (data.vo2MaxScore) {
+                summary += '--- CARDIOVASCULAR FITNESS ---\n';
+                summary += `VO2 Max Score: ${data.vo2MaxScore} ml/kg/min\n`;
+                if (data.vo2MaxMethod) summary += `Testing Method: ${data.vo2MaxMethod}\n`;
+                summary += '\n';
+            }
+            
+            // Grip Strength
+            if (data.gripScore) {
+                summary += '--- GRIP STRENGTH ---\n';
+                summary += `Score: ${data.gripScore} kg\n`;
+                if (data.dominantHand) summary += `Dominant Hand: ${data.dominantHand}\n`;
+                if (data.gripDevice) summary += `Device: ${data.gripDevice}\n`;
+                summary += '\n';
+            }
+            
+            // Balance
+            if (data.balanceTime) {
+                summary += '--- BALANCE TEST ---\n';
+                summary += `Single-Leg Stance: ${data.balanceTime} seconds\n`;
+                if (data.balanceLeg) summary += `Leg: ${data.balanceLeg}\n`;
+                summary += '\n';
+            }
+            
+            // FMS Score
+            const fmsScores = [
+                data.fmsSquat, data.fmsLunge, 
+                Math.min(data.fmsHurdleL || 3, data.fmsHurdleR || 3),
+                Math.min(data.fmsShoulderL || 3, data.fmsShoulderR || 3),
+                Math.min(data.fmsHamstringL || 3, data.fmsHamstringR || 3),
+                data.fmsPushup,
+                Math.min(data.fmsRotaryL || 3, data.fmsRotaryR || 3)
+            ];
+            const fmsTotal = fmsScores.filter(s => s).reduce((a, b) => parseInt(a || 0) + parseInt(b || 0), 0);
+            
+            if (fmsTotal > 0) {
+                summary += '--- FUNCTIONAL MOVEMENT SCREEN ---\n';
+                summary += `Total FMS Score: ${fmsTotal}/21\n`;
+                if (data.fmsSquat) summary += `Deep Squat: ${data.fmsSquat}\n`;
+                if (data.fmsLunge) summary += `In-Line Lunge: ${data.fmsLunge}\n`;
+                if (data.fmsHurdleL || data.fmsHurdleR) summary += `Hurdle Step: ${Math.min(data.fmsHurdleL || 3, data.fmsHurdleR || 3)}\n`;
+                if (data.fmsShoulderL || data.fmsShoulderR) summary += `Shoulder Mobility: ${Math.min(data.fmsShoulderL || 3, data.fmsShoulderR || 3)}\n`;
+                if (data.fmsHamstringL || data.fmsHamstringR) summary += `Hamstring Raise: ${Math.min(data.fmsHamstringL || 3, data.fmsHamstringR || 3)}\n`;
+                if (data.fmsPushup) summary += `Push-Up: ${data.fmsPushup}\n`;
+                if (data.fmsRotaryL || data.fmsRotaryR) summary += `Rotary Stability: ${Math.min(data.fmsRotaryL || 3, data.fmsRotaryR || 3)}\n`;
+                summary += '\n';
+            }
+            
+            // Body Composition
+            if (data.weight || data.height) {
+                summary += '--- BODY COMPOSITION ---\n';
+                if (data.weight) summary += `Weight: ${data.weight} ${data.weightUnit || 'lbs'}\n`;
+                if (data.height) summary += `Height: ${data.height} ${data.heightUnit || 'inches'}\n`;
+                
+                // Calculate BMI
+                if (data.weight && data.height) {
+                    let weightKg = data.weightUnit === 'kg' ? parseFloat(data.weight) : parseFloat(data.weight) * 0.453592;
+                    let heightM = data.heightUnit === 'cm' ? parseFloat(data.height) / 100 : parseFloat(data.height) * 0.0254;
+                    let bmi = (weightKg / (heightM * heightM)).toFixed(1);
+                    summary += `BMI: ${bmi}\n`;
+                }
+                
+                if (data.waist) summary += `Waist: ${data.waist}\n`;
+                if (data.hip) summary += `Hip: ${data.hip}\n`;
+                if (data.bodyFat) summary += `Body Fat %: ${data.bodyFat}\n`;
+                if (data.muscleMass) summary += `Muscle Mass %: ${data.muscleMass}\n`;
+                if (data.alm) summary += `ALM %: ${data.alm}\n`;
+                summary += '\n';
+            }
+            
+            // Metabolic
+            if (data.rmrValue) {
+                summary += '--- METABOLIC RATE ---\n';
+                summary += `RMR: ${data.rmrValue} kcal/day\n`;
+                if (data.rmrMethod) summary += `Method: ${data.rmrMethod}\n`;
+                summary += '\n';
+            }
+            
+            // Bone Density
+            if (data.tScore) {
+                summary += '--- BONE DENSITY ---\n';
+                summary += `T-Score: ${data.tScore}\n`;
+                if (data.scanLocation) summary += `Location: ${data.scanLocation}\n`;
+                if (data.boneDate) summary += `Date: ${data.boneDate}\n`;
+                summary += '\n';
+            }
+            
+            // Advanced Tests
+            if (data.advancedTests) {
+                summary += '--- ADVANCED ASSESSMENTS ---\n';
+                const tests = Array.isArray(data.advancedTests) ? data.advancedTests : [data.advancedTests];
+                summary += tests.join(', ') + '\n\n';
+            }
+            
+            // Wearable Data
+            if (data.deviceType) {
+                summary += '--- WEARABLE DATA ---\n';
+                summary += `Device: ${data.deviceType}\n`;
+                if (data.restingHR) summary += `Resting HR: ${data.restingHR} bpm\n`;
+                if (data.maxHR) summary += `Max HR: ${data.maxHR} bpm\n`;
+                if (data.hrv) summary += `HRV: ${data.hrv} ms\n`;
+                if (data.sleepScore) summary += `Sleep Score: ${data.sleepScore}\n`;
+                if (data.dailySteps) summary += `Daily Steps: ${data.dailySteps}\n`;
+                summary += '\n';
+            }
+            
+            // Goals
+            if (data.goals) {
+                summary += '--- LONGEVITY GOALS ---\n';
+                const goals = Array.isArray(data.goals) ? data.goals : [data.goals];
+                goals.forEach(goal => summary += `• ${goal}\n`);
+                if (data.additionalNotes) summary += `\nNotes: ${data.additionalNotes}\n`;
+                summary += '\n';
+            }
+            
+            // Add formatted summary to form
+            const summaryInput = document.createElement('input');
+            summaryInput.type = 'hidden';
+            summaryInput.name = '📊_FORMATTED_SUMMARY';
+            summaryInput.value = summary;
+            this.appendChild(summaryInput);
+            
             // Show loading state
             const submitBtn = this.querySelector('.btn-primary');
-            const originalText = submitBtn.textContent;
             submitBtn.textContent = 'Submitting...';
             submitBtn.disabled = true;
+            
+            // Submit form
+            this.submit();
         });
 
         // Initialize
